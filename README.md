@@ -1,3 +1,7 @@
+這是改用gcloud的筆記，之後打算要搬家到Gcloud
+https://taichunmin.idv.tw/blog/2022-09-11-gcp-functions-hosting.html
+
+以下是來自kkdai的原始版本
 LINE Bot template with Google Gemini Pro
 ---
 
