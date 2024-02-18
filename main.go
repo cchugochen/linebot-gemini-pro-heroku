@@ -104,7 +104,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 				}
 
 				// 移除 "##" 前綴，以便處理餘下的訊息
-				req = strings.TrimLeft(req, "##")
+				req = strings.TrimPrefix(req, "##")
 
 				var uID string // 取得用戶或群組/聊天室 ID
 				switch source := e.Source.(type) {
