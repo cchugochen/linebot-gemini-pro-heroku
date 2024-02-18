@@ -97,26 +97,24 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 			case webhook.TextMessageContent:
 				req := message.Text
 
-				var uID string           // 取得用戶或群組/聊天室 ID
-				isDirectMessage := false // 用來標記是否為與用戶的直接對話
-
-				switch source := e.Source.(type) {
-				case *webhook.UserSource:
-					uID = source.UserId
-					isDirectMessage = true // 與用戶直接對話
-				case *webhook.GroupSource:
-					uID = source.GroupId
-				case *webhook.RoomSource:
-					uID = source.RoomId
-				}
-
-				// 如果是在群組或聊天室中，且訊息不是以 "##" 開頭，則不進行處理
-				if (!isDirectMessage) && (!strings.HasPrefix(req, "##")) {
+				// 檢查訊息開頭是否包含 "##"
+				if !strings.HasPrefix(req, "##") {
+					// 如果不是以 "##" 開頭，則不進行任何處理
 					return
 				}
 
 				// 移除 "##" 前綴，以便處理餘下的訊息
 				req = strings.TrimLeft(req, "##")
+
+				var uID string // 取得用戶或群組/聊天室 ID
+				switch source := e.Source.(type) {
+				case *webhook.UserSource:
+					uID = source.UserId
+				case *webhook.GroupSource:
+					uID = source.GroupId
+				case *webhook.RoomSource:
+					uID = source.RoomId
+				}
 
 				// 檢查是否已經有這個用戶的 ChatSession
 				cs, ok := userSessions[uID]
