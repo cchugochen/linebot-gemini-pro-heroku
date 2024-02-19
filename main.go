@@ -111,9 +111,9 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 				case *webhook.UserSource:
 					uID = source.UserId
 				case *webhook.GroupSource:
-					uID = source.GroupId
+					uID = source.UserId
 				case *webhook.RoomSource:
-					uID = source.RoomId
+					uID = source.UserId
 				}
 
 				// 檢查是否已經有這個用戶的 ChatSession

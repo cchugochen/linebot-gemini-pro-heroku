@@ -10,7 +10,7 @@ import (
 )
 
 const ImageTemperture = 0.8
-const ChatTemperture = 0.2
+const ChatTemperture = 0.3
 
 // GeminiImage: 輸入圖片數據，返回生成的文字描述
 func GeminiImage(imgData []byte) (string, error) {
