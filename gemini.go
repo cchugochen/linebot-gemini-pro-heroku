@@ -25,8 +25,8 @@ func GeminiImage(imgData []byte) (string, error) {
 	value := float32(ImageTemperture)
 	model.Temperature = &value
 	prompt := []genai.Part{
-		genai.ImageData("png", imgData),                                        // 加入圖片數據
-		genai.Text("Describe this image with percise detail, reply in zh-TW:"), // 提示語
+		genai.ImageData("png", imgData), // 加入圖片數據
+		genai.Text("Describe this image with percise detail. Reply in zh-TW. 如果圖片中辨識出文字則翻譯為繁體中文. :"), // 提示語
 	}
 	log.Println("Begin processing image...")
 	resp, err := model.GenerateContent(ctx, prompt...) // 生成內容
