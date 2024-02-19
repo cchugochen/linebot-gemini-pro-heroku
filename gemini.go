@@ -10,7 +10,7 @@ import (
 )
 
 const ImageTemperture = 0.8
-const ChatTemperture = 0.3
+const ChatTemperture = 0.2
 
 // GeminiImage: 輸入圖片數據，返回生成的文字描述
 func GeminiImage(imgData []byte) (string, error) {
@@ -25,8 +25,8 @@ func GeminiImage(imgData []byte) (string, error) {
 	value := float32(ImageTemperture)
 	model.Temperature = &value
 	prompt := []genai.Part{
-		genai.ImageData("png", imgData),                                           // 加入圖片數據
-		genai.Text("Describe this image with scientific detail, reply in zh-TW:"), // 提示語
+		genai.ImageData("png", imgData),                                        // 加入圖片數據
+		genai.Text("Describe this image with percise detail, reply in zh-TW:"), // 提示語
 	}
 	log.Println("Begin processing image...")
 	resp, err := model.GenerateContent(ctx, prompt...) // 生成內容
@@ -39,7 +39,7 @@ func GeminiImage(imgData []byte) (string, error) {
 	return printResponse(resp), nil //輸出結果 返回
 }
 
-// startNewChatSession	: Start a new chat session
+// startNewChatSession	: 啟動聊天新對話
 func startNewChatSession() *genai.ChatSession {
 	ctx := context.Background()
 	client, err := genai.NewClient(ctx, option.WithAPIKey(geminiKey))

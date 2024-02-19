@@ -77,9 +77,9 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	cb, err := webhook.ParseRequest(os.Getenv("ChannelSecret"), r) // 解析請求
 	if err != nil {
 		if err == linebot.ErrInvalidSignature {
-			w.WriteHeader(400) // 簽名無效時回傳 400 狀態碼
+			w.WriteHeader(400) // 簽名無效時回傳狀態碼
 		} else {
-			w.WriteHeader(500) // 簽名無效時回傳 400 狀態碼
+			w.WriteHeader(500) // 簽名無效時回傳狀態碼
 		}
 		return
 	}
@@ -98,13 +98,13 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 				req := message.Text
 
 				// 檢查訊息開頭是否包含 "##"
-				if !strings.HasPrefix(req, "##") {
-					// 如果不是以 "##" 開頭，則不進行任何處理
+				if !strings.HasPrefix(req, "@#") {
+					// 如果不是以 "@#" 開頭，則不進行任何處理
 					return
 				}
 
-				// 移除 "##" 前綴，以便處理餘下的訊息
-				req = strings.TrimPrefix(req, "##")
+				// 移除 "@#" 前綴，以便處理餘下的訊息
+				req = strings.TrimPrefix(req, "@#")
 
 				var uID string // 取得用戶或群組/聊天室 ID
 				switch source := e.Source.(type) {
