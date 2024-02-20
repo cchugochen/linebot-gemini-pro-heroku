@@ -56,7 +56,12 @@ func main() {
 }
 
 // 回覆文本消息
-func replyText(replyToken, text string) error {
+func replyText(replyToken, text string, firstTime bool) error {
+	// 如果是第一次對話，添加初始化提示语
+	if firstTime {
+		text = "You are a helpful assistant with precise and logical thinking. " + text
+	}
+
 	if _, err := bot.ReplyMessage(
 		&messaging_api.ReplyMessageRequest{
 			ReplyToken: replyToken, // 回覆令牌
@@ -97,9 +102,9 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 			case webhook.TextMessageContent:
 				req := message.Text
 
-				// 檢查訊息開頭是否包含 "##"
+				// 檢查訊息: 如果不是以 "@#" 開頭，則不進行任何處理
 				if !strings.HasPrefix(req, "@#") {
-					// 如果不是以 "@#" 開頭，則不進行任何處理
+
 					return
 				}
 
@@ -125,9 +130,10 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				if strings.EqualFold(req, "reset") {
 					// 如果用戶輸入 "reset"，重置記憶，創建一個新的 ChatSession
+					firstTime := !ok // 如果ok为false，说明用户会话是新的，firstTime为true
 					cs = startNewChatSession()
 					userSessions[uID] = cs
-					if err := replyText(e.ReplyToken, "很高興初次見到你，我是Gemini，請問有什麼想了解的嗎？"); err != nil {
+					if err := replyText(e.ReplyToken, "很高興初次見到你，我是Gemini，請問有什麼想了解的嗎？", firstTime); err != nil {
 						log.Print(err)
 					}
 					return
@@ -136,7 +142,9 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 				// 使用既有 ChatSession 來處理文字訊息 & Reply with Gemini result
 				res := send(cs, req)
 				ret := printResponse(res)
-				if err := replyText(e.ReplyToken, ret); err != nil {
+				// 在调用replyText时，检查是否为新会话
+				firstTime := !ok // 如果ok为false，说明用户会话是新的，firstTime为true
+				if err := replyText(e.ReplyToken, ret, firstTime); err != nil {
 					log.Print(err)
 				}
 
