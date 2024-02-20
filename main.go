@@ -56,12 +56,7 @@ func main() {
 }
 
 // 回覆文本消息
-func replyText(replyToken, text string, firstTime bool) error {
-	// 如果是第一次對話，添加初始化提示语
-	if firstTime {
-		text = "You are a helpful assistant with precise and logical thinking. " + text
-	}
-
+func replyText(replyToken, text string) error {
 	if _, err := bot.ReplyMessage(
 		&messaging_api.ReplyMessageRequest{
 			ReplyToken: replyToken, // 回覆令牌
@@ -134,59 +129,34 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 					cs = startNewChatSession()
 					userSessions[uID] = cs
 					firstTime = true // 重置或新會話，firstTime設為true
-					if err := replyText(e.ReplyToken, "很高興初次見到你，我是Gemini，請問有什麼想了解的嗎？", firstTime); err != nil {
+					if err := replyText(e.ReplyToken, "很高興初次見到你，我是Gemini，請問有什麼想了解的嗎？"); err != nil {
 						log.Print(err)
 					}
 					return
 				}
 
 				// 使用既有 ChatSession 來處理文字訊息 & Reply with Gemini result
-				res := send(cs, req)
+				res := send(cs, req, firstTime)
 				ret := printResponse(res)
 				// 在调用replyText时，检查是否为新会话
-				if err := replyText(e.ReplyToken, ret, firstTime); err != nil {
+				if err := replyText(e.ReplyToken, ret); err != nil {
 					log.Print(err)
 				}
 
 			// 處理貼圖消息
 			case webhook.StickerMessageContent:
-
-				var uID string // 取得用戶或群組/聊天室 ID
-				switch source := e.Source.(type) {
-				case *webhook.UserSource:
-					uID = source.UserId
-				case *webhook.GroupSource:
-					uID = source.UserId
-				case *webhook.RoomSource:
-					uID = source.UserId
-				}
-
-				_, firstTime := userSessions[uID] // 检查是否存在用户
-
 				var kw string
 				for _, k := range message.Keywords {
 					kw = kw + "," + k
 				}
 
 				outStickerResult := fmt.Sprintf("收到貼圖訊息: %s, pkg: %s kw: %s  text: %s", message.StickerId, message.PackageId, kw, message.Text)
-				if err := replyText(e.ReplyToken, outStickerResult, firstTime); err != nil {
+				if err := replyText(e.ReplyToken, outStickerResult); err != nil {
 					log.Print(err)
 				}
 
 			// 處理image圖片消息
 			case webhook.ImageMessageContent:
-				var uID string // 取得用戶或群組/聊天室 ID
-				switch source := e.Source.(type) {
-				case *webhook.UserSource:
-					uID = source.UserId
-				case *webhook.GroupSource:
-					uID = source.UserId
-				case *webhook.RoomSource:
-					uID = source.UserId
-				}
-
-				_, firstTime := userSessions[uID] // 检查是否存在用户
-
 				log.Println("收到圖片類訊息 ID:", message.Id)
 
 				//Get image binary from LINE server based on message ID.
@@ -203,7 +173,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					ret = "無法辨識圖片內容，請重新輸入:" + err.Error()
 				}
-				if err := replyText(e.ReplyToken, ret, firstTime); err != nil {
+				if err := replyText(e.ReplyToken, ret); err != nil {
 					log.Print(err)
 				}
 

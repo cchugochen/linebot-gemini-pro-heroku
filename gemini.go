@@ -54,12 +54,16 @@ func startNewChatSession() *genai.ChatSession {
 }
 
 // send: Send a message to the chat session
-func send(cs *genai.ChatSession, msg string) *genai.GenerateContentResponse {
+func send(cs *genai.ChatSession, msg string, firstTime bool) *genai.GenerateContentResponse {
 	if cs == nil {
 		cs = startNewChatSession() // 如果會話不存在，則啟動新會話
 	}
 
 	ctx := context.Background()
+	if firstTime {
+		// 如果是第一次对话，向Gemini发送的消息中加入初始化提示语
+		msg = "I am a helpful assistant with precise and logical thinking." + msg
+	}
 	log.Printf("== Me: %s\n== Model:\n", msg)
 	res, err := cs.SendMessage(ctx, genai.Text(msg)) // 發送消息
 	if err != nil {
