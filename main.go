@@ -32,19 +32,19 @@ var blob *messaging_api.MessagingApiBlobAPI // 處理大型資料 API 客戶端
 var geminiKey string                        // Gemini API 金鑰
 var channelToken string                     // LINE 頻道令牌
 
-// 建立一個 map 來儲存每個用戶的 ChatSession
+// 建立一個map來儲存每個用戶的 ChatSession
 var userSessions = make(map[string]*genai.ChatSession)
 
 func main() {
 	var err error
 	geminiKey = os.Getenv("GOOGLE_GEMINI_API_KEY")
 	channelToken = os.Getenv("ChannelAccessToken")
-	bot, err = messaging_api.NewMessagingApiAPI(channelToken) // 初始化 LINE消息API客戶端
+	bot, err = messaging_api.NewMessagingApiAPI(channelToken) // 初始化LINE消息API客戶端
 	if err != nil {
 		log.Fatal(err) // 如果初始化失敗，則終止程式
 	}
 
-	blob, err = messaging_api.NewMessagingApiBlobAPI(channelToken) // 初始化處理大型資料 API 客戶端
+	blob, err = messaging_api.NewMessagingApiBlobAPI(channelToken) // 初始化處理大型資料API客戶端
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func main() {
 	http.HandleFunc("/callback", callbackHandler) // 設定回調處理器
 	port := os.Getenv("PORT")                     // 從環境變數獲取服務器端口
 	addr := fmt.Sprintf(":%s", port)              // 格式化服務器地址
-	http.ListenAndServe(addr, nil)                // 啟動 HTTP 服務器
+	http.ListenAndServe(addr, nil)                // 啟動HTTP服務器
 }
 
 // 回覆文本消息
@@ -75,11 +75,11 @@ func replyText(replyToken, text string) error {
 // 處理LINE平台的回調事件
 func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	cb, err := webhook.ParseRequest(os.Getenv("ChannelSecret"), r) // 解析請求
-	if err != nil {
+	if err != nil {                                                // 簽名無效時回傳狀態碼
 		if err == linebot.ErrInvalidSignature {
-			w.WriteHeader(400) // 簽名無效時回傳狀態碼
+			w.WriteHeader(400)
 		} else {
-			w.WriteHeader(500) // 簽名無效時回傳狀態碼
+			w.WriteHeader(500)
 		}
 		return
 	}
@@ -100,9 +100,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 				if !strings.HasPrefix(req, "@#") {
 					return
 				}
-
-				// 移除 "@#" 前綴，以便處理餘下的訊息
-				req = strings.TrimPrefix(req, "@#")
+				req = strings.TrimPrefix(req, "@#") // 移除 "@#" 前綴，以便處理餘下的訊息
 
 				var uID string // 取得用戶或群組/聊天室 ID
 				switch source := e.Source.(type) {
@@ -125,7 +123,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 					firstTime = true // 重置或新會話，firstTime設為true
 				}
 				if strings.EqualFold(req, "reset") {
-					// 如果用戶輸入 "reset"，重置記憶，創建一個新的 ChatSession
+					// 如果用戶輸入 "reset"，重置記憶，創建一個新的ChatSession
 					cs = startNewChatSession()
 					userSessions[uID] = cs
 					firstTime = true // 重置或新會話，firstTime設為true
@@ -135,15 +133,15 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				// 使用既有 ChatSession 來處理文字訊息 & Reply with Gemini result
+				// 使用既有 ChatSession 來處理文字訊息&Reply with Gemini result
 				res := send(cs, req, firstTime)
 				ret := printResponse(res)
-				// 在调用replyText时，检查是否为新会话
+				// replyText前先評估是否為新對話
 				if err := replyText(e.ReplyToken, ret); err != nil {
 					log.Print(err)
 				}
 
-			// 處理貼圖消息
+			// 處理貼圖消息(Pending)
 			case webhook.StickerMessageContent:
 				var kw string
 				for _, k := range message.Keywords {
@@ -155,7 +153,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 					log.Print(err)
 				}
 
-			// 處理image圖片消息
+			// 處理圖片型Img消息
 			case webhook.ImageMessageContent:
 				log.Println("收到圖片類訊息 ID:", message.Id)
 
@@ -177,7 +175,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 					log.Print(err)
 				}
 
-			// Handle only video message
+			// 影片類訊息(Pending)
 			case webhook.VideoMessageContent:
 				log.Println("收到影片類訊息 ID:", message.Id)
 

@@ -26,7 +26,7 @@ func GeminiImage(imgData []byte) (string, error) {
 	model.Temperature = &value
 	prompt := []genai.Part{
 		genai.ImageData("png", imgData), // 加入圖片數據
-		genai.Text("Describe this image with percise detail. Reply in zh-TW. 如果圖片中辨識出文字則翻譯為繁體中文. :"), // 提示語
+		genai.Text("Describe this image with percise detail(例如繪畫的作者與歷史, 照片的地點或可能時間). Reply in zh-TW. 如果從圖片辨識出文字,翻譯為繁體中文. :"), // 提示語
 	}
 	log.Println("Begin processing image...")
 	resp, err := model.GenerateContent(ctx, prompt...) // 生成內容
@@ -62,7 +62,7 @@ func send(cs *genai.ChatSession, msg string, firstTime bool) *genai.GenerateCont
 	ctx := context.Background()
 	if firstTime {
 		// 如果是第一次对话，向Gemini发送的消息中加入初始化提示语
-		msg = "I am a helpful assistant with precise and logical thinking." + msg
+		msg = "I am a helpful assistant with precise and logical thinking. 如果使用者有情緒需求則支持性回應" + msg
 	}
 	log.Printf("== Me: %s\n== Model:\n", msg)
 	res, err := cs.SendMessage(ctx, genai.Text(msg)) // 發送消息
