@@ -9,7 +9,7 @@ import (
 	"google.golang.org/api/option"
 )
 
-const ImageTemperture = 0.8
+const ImageTemperture = 0.7
 const ChatTemperture = 0.1
 
 // GeminiImage: 輸入圖片數據，返回生成的文字描述
@@ -24,6 +24,24 @@ func GeminiImage(imgData []byte) (string, error) {
 	model := client.GenerativeModel("gemini-pro-vision") // 選擇生成模型
 	value := float32(ImageTemperture)
 	model.Temperature = &value
+	model.SafetySettings = []*genai.SafetySetting{
+		{
+			Category:  genai.HarmCategoryHarassment,
+			Threshold: genai.HarmBlockOnlyHigh,
+		},
+		{
+			Category:  genai.HarmCategoryHateSpeech,
+			Threshold: genai.HarmBlockOnlyHigh,
+		},
+		{
+			Category:  genai.HarmCategorySexuallyExplicit,
+			Threshold: genai.HarmBlockNone,
+		},
+		{
+			Category:  genai.HarmCategoryDangerousContent,
+			Threshold: genai.HarmBlockOnlyHigh,
+		},
+	}
 	prompt := []genai.Part{
 		genai.ImageData("png", imgData), // 加入圖片數據
 		genai.Text("Describe this image with percise detail(例如繪畫的作者與歷史, 照片的地點或可能時間). Reply in zh-TW. 如果從圖片辨識出文字,翻譯為繁體中文. :"), // 提示語
@@ -49,6 +67,24 @@ func startNewChatSession() *genai.ChatSession {
 	model := client.GenerativeModel("gemini-pro") // 選擇聊天模型
 	value := float32(ChatTemperture)
 	model.Temperature = &value
+	model.SafetySettings = []*genai.SafetySetting{
+		{
+			Category:  genai.HarmCategoryHarassment,
+			Threshold: genai.HarmBlockOnlyHigh,
+		},
+		{
+			Category:  genai.HarmCategoryHateSpeech,
+			Threshold: genai.HarmBlockOnlyHigh,
+		},
+		{
+			Category:  genai.HarmCategorySexuallyExplicit,
+			Threshold: genai.HarmBlockNone,
+		},
+		{
+			Category:  genai.HarmCategoryDangerousContent,
+			Threshold: genai.HarmBlockOnlyHigh,
+		},
+	}
 	cs := model.StartChat() // 啟動聊天
 	return cs
 }
