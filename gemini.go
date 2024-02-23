@@ -9,8 +9,8 @@ import (
 	"google.golang.org/api/option"
 )
 
-const ImageTemperture = 0.5
-const ChatTemperture = 0.1
+const ImageTemperture = 0.8
+const ChatTemperture = 0.3
 
 // GeminiImage: 輸入圖片數據，返回生成的文字描述
 func GeminiImage(imgData []byte) (string, error) {
@@ -26,7 +26,7 @@ func GeminiImage(imgData []byte) (string, error) {
 	model.Temperature = &value
 	prompt := []genai.Part{
 		genai.ImageData("png", imgData), // 加入圖片數據
-		genai.Text("Describe this image with percise detail(例如繪畫的作者與歷史, 照片的地點或可能時間). Reply in zh-TW. 如果從圖片辨識出文字,翻譯為繁體中文. :"), // 提示語
+		genai.Text("Describe this image with percise detail. Reply in zh-TW. 如果從圖片辨識出文字,翻譯為繁體中文. :"), // 提示語
 	}
 	log.Println("Begin processing image...")
 	resp, err := model.GenerateContent(ctx, prompt...) // 生成內容
@@ -49,24 +49,6 @@ func startNewChatSession() *genai.ChatSession {
 	model := client.GenerativeModel("gemini-pro") // 選擇聊天模型
 	value := float32(ChatTemperture)
 	model.Temperature = &value
-	model.SafetySettings = []*genai.SafetySetting{
-		{
-			Category:  genai.HarmCategoryHarassment,
-			Threshold: genai.HarmBlockNone,
-		},
-		{
-			Category:  genai.HarmCategoryHateSpeech,
-			Threshold: genai.HarmBlockNone,
-		},
-		{
-			Category:  genai.HarmCategorySexuallyExplicit,
-			Threshold: genai.HarmBlockNone,
-		},
-		{
-			Category:  genai.HarmCategoryDangerousContent,
-			Threshold: genai.HarmBlockNone,
-		},
-	}
 	cs := model.StartChat() // 啟動聊天
 	return cs
 }
@@ -79,8 +61,7 @@ func send(cs *genai.ChatSession, msg string, firstTime bool) *genai.GenerateCont
 
 	ctx := context.Background()
 	if firstTime {
-		// 如果是第一次对话，向Gemini发送的消息中加入初始化提示语
-		msg = "I am a helpful assistant with precise and logical thinking. 如果使用者有情緒需求則支持性回應" + msg
+		msg = "I am a helpful assistant with precise and logical thinking." + msg
 	}
 	log.Printf("== Me: %s\n== Model:\n", msg)
 	res, err := cs.SendMessage(ctx, genai.Text(msg)) // 發送消息
