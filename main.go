@@ -18,6 +18,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/google/generative-ai-go/genai"
 	"github.com/line/line-bot-sdk-go/v8/linebot"
@@ -25,53 +26,56 @@ import (
 	"github.com/line/line-bot-sdk-go/v8/linebot/webhook"
 )
 
-var bot *messaging_api.MessagingApiAPI
-var blob *messaging_api.MessagingApiBlobAPI
-var geminiKey string
-var channelToken string
+// 定義全局變量
+var bot *messaging_api.MessagingApiAPI      // LINE消息API客戶端
+var blob *messaging_api.MessagingApiBlobAPI // 處理大型資料 API 客戶端
+var geminiKey string                        // Gemini API 金鑰
+var channelToken string                     // LINE 頻道令牌
 
-// 建立一個 map 來儲存每個用戶的 ChatSession
+// 建立一個map來儲存每個用戶的 ChatSession
 var userSessions = make(map[string]*genai.ChatSession)
 
 func main() {
 	var err error
 	geminiKey = os.Getenv("GOOGLE_GEMINI_API_KEY")
 	channelToken = os.Getenv("ChannelAccessToken")
-	bot, err = messaging_api.NewMessagingApiAPI(channelToken)
+	bot, err = messaging_api.NewMessagingApiAPI(channelToken) // 初始化LINE消息API客戶端
+	if err != nil {
+		log.Fatal(err) // 如果初始化失敗，則終止程式
+	}
+
+	blob, err = messaging_api.NewMessagingApiBlobAPI(channelToken) // 初始化處理大型資料API客戶端
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	blob, err = messaging_api.NewMessagingApiBlobAPI(channelToken)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	http.HandleFunc("/callback", callbackHandler)
-	port := os.Getenv("PORT")
-	addr := fmt.Sprintf(":%s", port)
-	http.ListenAndServe(addr, nil)
+	http.HandleFunc("/callback", callbackHandler) // 設定回調處理器
+	port := os.Getenv("PORT")                     // 從環境變數獲取服務器端口
+	addr := fmt.Sprintf(":%s", port)              // 格式化服務器地址
+	http.ListenAndServe(addr, nil)                // 啟動HTTP服務器
 }
 
+// 回覆文本消息
 func replyText(replyToken, text string) error {
 	if _, err := bot.ReplyMessage(
 		&messaging_api.ReplyMessageRequest{
-			ReplyToken: replyToken,
+			ReplyToken: replyToken, // 回覆令牌
 			Messages: []messaging_api.MessageInterface{
 				&messaging_api.TextMessage{
-					Text: text,
+					Text: text, // 要回覆的文本內容
 				},
 			},
 		},
 	); err != nil {
-		return err
+		return err // 回覆失敗時返回錯誤
 	}
-	return nil
+	return nil // 回覆成功
 }
 
+// 處理LINE平台的回調事件
 func callbackHandler(w http.ResponseWriter, r *http.Request) {
-	cb, err := webhook.ParseRequest(os.Getenv("ChannelSecret"), r)
-	if err != nil {
+	cb, err := webhook.ParseRequest(os.Getenv("ChannelSecret"), r) // 解析請求
+	if err != nil {                                                // 簽名無效時回傳狀態碼
 		if err == linebot.ErrInvalidSignature {
 			w.WriteHeader(400)
 		} else {
@@ -80,18 +84,25 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 遍歷所有事件
 	for _, event := range cb.Events {
-		log.Printf("Got event %v", event)
-		switch e := event.(type) {
-		case webhook.MessageEvent:
+		log.Printf("Got event %v", event) // 記錄事件資訊
+
+		switch e := event.(type) { // 根據事件類型進行分支處理
+		case webhook.MessageEvent: // 處理事件: 文字, 圖片, 貼圖
 			switch message := e.Message.(type) {
-			// Handle only on text message
+
+			// 處理文字型訊息
 			case webhook.TextMessageContent:
 				req := message.Text
-				// 檢查是否已經有這個用戶的 ChatSession or req == "reset"
 
-				// 取得用戶 ID
-				var uID string
+				// 檢查訊息: 如果不是以 "@#" 開頭，則不進行任何處理
+				if !strings.HasPrefix(req, "@#") {
+					return
+				}
+				req = strings.TrimPrefix(req, "@#") // 移除 "@#" 前綴，以便處理餘下的訊息
+
+				var uID string // 取得用戶或群組/聊天室 ID
 				switch source := e.Source.(type) {
 				case *webhook.UserSource:
 					uID = source.UserId
@@ -103,27 +114,34 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 
 				// 檢查是否已經有這個用戶的 ChatSession
 				cs, ok := userSessions[uID]
+				firstTime := !ok // 不是第一次
+
 				if !ok {
 					// 如果沒有，則創建一個新的 ChatSession
 					cs = startNewChatSession()
 					userSessions[uID] = cs
+					firstTime = true // 重置或新會話，firstTime設為true
 				}
-				if req == "reset" {
-					// 如果需要重置記憶，創建一個新的 ChatSession
+				if strings.EqualFold(req, "reset") {
+					// 如果用戶輸入 "reset"，重置記憶，創建一個新的ChatSession
 					cs = startNewChatSession()
 					userSessions[uID] = cs
-					if err := replyText(e.ReplyToken, "很高興初次見到你，請問有什麼想了解的嗎？"); err != nil {
+					firstTime = true // 重置或新會話，firstTime設為true
+					if err := replyText(e.ReplyToken, "很高興初次見到你，我是Gemini，請問有什麼想了解的嗎？"); err != nil {
 						log.Print(err)
 					}
-					continue
+					return
 				}
-				// 使用這個 ChatSession 來處理訊息 & Reply with Gemini result
-				res := send(cs, req)
+
+				// 使用既有 ChatSession 來處理文字訊息&Reply with Gemini result
+				res := send(cs, req, firstTime)
 				ret := printResponse(res)
+				// replyText前先評估是否為新對話
 				if err := replyText(e.ReplyToken, ret); err != nil {
 					log.Print(err)
 				}
-			// Handle only on Sticker message
+
+			// 處理貼圖消息(Pending)
 			case webhook.StickerMessageContent:
 				var kw string
 				for _, k := range message.Keywords {
@@ -135,14 +153,14 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 					log.Print(err)
 				}
 
-			// Handle only image message
+			// 處理圖片型Img消息
 			case webhook.ImageMessageContent:
-				log.Println("Got img msg ID:", message.Id)
+				log.Println("收到圖片類訊息 ID:", message.Id)
 
 				//Get image binary from LINE server based on message ID.
 				content, err := blob.GetMessageContent(message.Id)
 				if err != nil {
-					log.Println("Got GetMessageContent err:", err)
+					log.Println("無法取得圖片的資訊:", err)
 				}
 				defer content.Body.Close()
 				data, err := io.ReadAll(content.Body)
@@ -157,12 +175,12 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 					log.Print(err)
 				}
 
-			// Handle only video message
+			// 影片類訊息(Pending)
 			case webhook.VideoMessageContent:
-				log.Println("Got video msg ID:", message.Id)
+				log.Println("收到影片類訊息 ID:", message.Id)
 
 			default:
-				log.Printf("Unknown message: %v", message)
+				log.Printf("無法處理影片類訊息: %v", message)
 			}
 		case webhook.FollowEvent:
 			log.Printf("message: Got followed event")

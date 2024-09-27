@@ -1,14 +1,16 @@
 module github.com/kkdai/linebot-gemini-pro
+// 定義當前模組的路徑，這是項目在版本控制系統中的位置。
 
-// +heroku goVersion go1.21.1
+// 指定+heroku goVersion go1.21.1
 go 1.21.1
 
+// 第一個require列出項目直接依賴的模組及其版本
 require (
 	github.com/google/generative-ai-go v0.5.0
 	github.com/line/line-bot-sdk-go/v8 v8.2.0
 	google.golang.org/api v0.154.0
 )
-
+//間接依賴
 require (
 	cloud.google.com/go/ai v0.3.0 // indirect
 	cloud.google.com/go/compute v1.23.3 // indirect
